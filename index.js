@@ -6,7 +6,7 @@ const bcrypt = require ("bcryptjs");
 const session = require ("express-session");
 const db = require("./database/db");
 const { body, validationResult } = require("express-validator");
-
+const expressLayouts = require("express-ejs-layouts");
 
 // 9.7 ######################################## S E S I O N  (FIJO) ######################################## 
 app.use(
@@ -31,6 +31,7 @@ app.use('/resources', express.static(__dirname + '/public'));
 
 //9.6 ######################################## V I S T A S  (FIJO) ######################################## 
 app.set("view engine", "ejs");
+app.use(expressLayouts);
 // app.set("views", __dirname + "/views"); //definimos la carpeta (no es necesario si la carpeta se llama views)
 
 
@@ -46,11 +47,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-    res.render("login");
+    res.render("login", {titulo: "Login"});
 });
 
 app.get("/registro", (req, res) => {
-    res.render("register");
+    res.render("register", {titulo: "Login", css: "body.css"});
 });
 
 
@@ -125,6 +126,8 @@ app.post(
             res.render("register", {
                 validaciones: validacionErrores,
                 valores: valores,
+                titulo: "Registro",
+
             });
         } else {
             //Recoger los datos del formulario
@@ -162,6 +165,7 @@ app.post(
                             showConfirmButton: false,
                             timer: 2500,
                             ruta: "",
+                            titulo: "Registro",
                         });
                     }
                 }
@@ -198,6 +202,7 @@ app.post("/auth", async (req, res) => {
                         timer: false,
                         ruta: "login",
                         login: false,
+                        titulo: "Login",
                     });
                 } else {
                     //variables de sesión
@@ -213,6 +218,7 @@ app.post("/auth", async (req, res) => {
                         timer: 2500,
                         ruta: "",
                         login: true,
+                        titulo: "Login",
                     });
                 } //MENSAJE: CREDENCIALES CORRECTAS
             }
@@ -227,6 +233,7 @@ app.post("/auth", async (req, res) => {
             timer: false,
             ruta: 'login',
             login:false,
+            titulo: "Login",
         });
     }
 });
