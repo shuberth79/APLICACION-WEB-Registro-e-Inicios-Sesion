@@ -4,7 +4,8 @@ const router = express();
 const bcrypt = require("bcryptjs");
 const db = require("../database/db");
 const { body, validationResult } = require("express-validator");
-const crud = require("../src/controllers");
+const crud = require ("../src/controllers")
+
 
 
 //9.4 ######################################## R U T A S ########################################
@@ -23,44 +24,165 @@ router.get("/", (req, res) => {
     }
 });
 
+
+
+// ######################################## RUTA A VISTA LOGIN
 router.get("/login", (req, res) => {
     res.render("login");
 });
 
+
+// router.get("/login", (req, res) => {
+//     if (req.session.loggedin) {
+//         res.render("login", {
+//             login: true,
+//         });
+//     } else {
+//         res.render("login", {
+//             login: false,
+//         });
+//     }
+    
+// });
+
+
+
+// ######################################## RUTA A VISTA REGISTRO
 router.get("/registro", (req, res) => {
     res.render("register");
 });
 
+// router.get("/registro", (req, res) => {
+//     if (req.session.loggedin) {
+//         res.render("register", {
+//             login: true,
+//         });
+//     } else {
+//         res.render("login", {
+//             login: false,
+//         });
+//     }
+// });
+
+
+
 // ######################################## C I E R R E  -  S E S I O N ########################################
-// CIERRE SESION Y RE-DIRIGE A PAGINA PRINCIPAL
 router.get("/logout", (req, res) => {
     req.session.destroy(() => {
         res.redirect("/");
     });
 });
 
+
 // ######################################## RUTA A VISTA ADMIN
+// router.get("/admin", (req, res) => {
+//     res.render("admin");
+// });
+
 router.get("/admin", (req, res) => {
-    // res.render("admin");
-    db.query("SELECT * FROM productos", (error, results) => {
-        if (error) { // SI HAY ERROR
-            throw error;  //MOSTRAR LOS ERRORES
-        } else {    // SI NO LO HAY MOSTRAR LOS RESULTADOS
-            res.render("admin", {
-                productos: results,
-            });
-        }
-    });
+    if (req.session.loggedin) {
+        db.query("SELECT * FROM productos", (error, results) => { //CONSULTAMOS Y CAPTURAMOS DATOS
+            if (error) {
+                throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+            } else {
+                res.render("admin", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
+                    productos: results,
+                    login: true,
+                    rol: req.session.rol,
+                });
+            }
+        });
+    } else {
+        res.render("admin", {
+            msg: "Acceso restringuido, inicie sesión",
+            login: false,
+        });
+    }
 });
+
+
+
+// ######################################## RUTA A VISTA CREATE
+// router.get("/create", (req, res) => {
+//     res.render("create");
+// });
 
 router.get("/create", (req, res) => {
-    res.render("create");
+    if (req.session.loggedin) {
+        res.render("create", {
+            login: true,
+        });
+    } else {
+        res.render("login", {
+            user: "Debe iniciar sesión",
+            login: false,
+        });
+    }
 });
 
 
+// ######################################## RUTA A VISTA EDIT
+router.get("/edit/:ref", (req, res) => {
+    const ref = req.params.ref;
+    db.query(
+        "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
+            if (error) {
+                throw error; 
+            } else {
+                res.render("edit", {  
+                    producto: results[0],
+                });
+            }
+        }
+    );
+})
 
 
+// router.get("/edit/:ref", (req, res) => {
+//     const ref = req.params.ref;
+//         if (req.session.loggedin) {
+//             db.query(
+//                 "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
+//             if (error) {
+//                 throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+//             } else {
+//                 res.render("edit", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
+//                     productos: results,
+//                     login: true,
+//                     rol: req.session.rol,
+//                 });
+//             }
+//         });
+//     } else {
+//         res.render("admin", {
+//             msg: "Acceso restringuido, inicie sesión",
+//             login: false,
+//         });
+//     }
+// });
+
+
+
+// ######################################## RUTA A VISTA DELETE
+router.get("/delete/:ref", (req, res) => {
+    const ref = req.params.ref;
+    db.query(
+        "DELETE FROM productos WHERE ref = ?", [ref], (error, results) => { 
+            if (error) {
+                throw error; 
+            } else {
+                res.redirect("/admin");
+            }
+        }
+    );
+})
+
+
+
+// #######################################################################################################
 // ######################################## R U T A S - P O S T S ########################################
+// #######################################################################################################
+
 router.post(
     "/register",
     [
@@ -103,8 +225,6 @@ router.post(
                     nombre: name,
                     rol: rol,
                     pass: passwordHash,
-                    // email: email,
-                    // edad: edad
                 },
                 (error, results) => {
                     if (error) {
@@ -158,6 +278,7 @@ router.post("/auth", async (req, res) => {
                     //variables de sesión
                     req.session.loggedin = true;
                     req.session.name = results[0].nombre;
+                    req.session.rol = results[0].rol;
                     //Mensaje simple para avisar de que es correcta la autenticación
                     res.render("login", {
                         alert: true,
@@ -187,6 +308,8 @@ router.post("/auth", async (req, res) => {
 });
 
 
-router.post ("/save", crud.save)
+router.post("/save", crud.save);
+router.post("/update", crud.update);
+
 
 module.exports = router;

@@ -3,7 +3,6 @@ const express = require("express");
 const app = express();
 require("dotenv").config({ path: "./env/.env" });
 const session = require("express-session");
-// const expressLayouts = require("express-ejs-layouts");
 
 // 9.7 ######################################## S E S I O N  (FIJO) ########################################
 app.use(
@@ -29,7 +28,7 @@ app.set("view engine", "ejs");
 
 //9.2 ######################################## S E R V I D O R ########################################
 app.listen(4000, () => {
-    console.log("El servidor está ejecutándose en http://localhost:4000");
+    console.log("El servidor está ejecutándose en http://localhost:4003");
 });
 
 // ######################################## E X P O R T A C I O N ########################################
