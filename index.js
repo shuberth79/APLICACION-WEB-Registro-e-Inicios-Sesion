@@ -28,7 +28,7 @@ app.set("view engine", "ejs");
 
 //9.2 ######################################## S E R V I D O R ########################################
 app.listen(4000, () => {
-    console.log("El servidor está ejecutándose en http://localhost:4003");
+    console.log("El servidor está ejecutándose en http://localhost:4000");
 });
 
 // ######################################## E X P O R T A C I O N ########################################

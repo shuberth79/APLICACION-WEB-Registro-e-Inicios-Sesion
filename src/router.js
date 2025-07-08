@@ -27,42 +27,41 @@ router.get("/", (req, res) => {
 
 
 // ######################################## RUTA A VISTA LOGIN
-router.get("/login", (req, res) => {
-    res.render("login");
-});
-
-
 // router.get("/login", (req, res) => {
-//     if (req.session.loggedin) {
-//         res.render("login", {
-//             login: true,
-//         });
-//     } else {
-//         res.render("login", {
-//             login: false,
-//         });
-//     }
-    
+//     res.render("login");
 // });
+
+
+router.get("/login", (req, res) => {
+    if (req.session.loggedin) {
+        res.render("login", {
+            login: true,
+        });
+    } else {
+        res.render("login", {
+            login: false,
+        });
+    }
+});
 
 
 
 // ######################################## RUTA A VISTA REGISTRO
-router.get("/registro", (req, res) => {
-    res.render("register");
-});
-
 // router.get("/registro", (req, res) => {
-//     if (req.session.loggedin) {
-//         res.render("register", {
-//             login: true,
-//         });
-//     } else {
-//         res.render("login", {
-//             login: false,
-//         });
-//     }
+//     res.render("register");
 // });
+
+router.get("/registro", (req, res) => {
+    if (req.session.loggedin) {
+        res.render("register", {
+            login: true,
+        });
+    } else {
+        res.render("register", {
+            login: false,
+        });
+    }
+});
 
 
 
@@ -113,53 +112,47 @@ router.get("/create", (req, res) => {
             login: true,
         });
     } else {
-        res.render("login", {
-            user: "Debe iniciar sesión",
-            login: false,
-        });
+        res.redirect("/")
     }
 });
 
 
 // ######################################## RUTA A VISTA EDIT
-router.get("/edit/:ref", (req, res) => {
-    const ref = req.params.ref;
-    db.query(
-        "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
-            if (error) {
-                throw error; 
-            } else {
-                res.render("edit", {  
-                    producto: results[0],
-                });
-            }
-        }
-    );
-})
-
-
 // router.get("/edit/:ref", (req, res) => {
 //     const ref = req.params.ref;
-//         if (req.session.loggedin) {
-//             db.query(
-//                 "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
+//     db.query(
+//         "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
 //             if (error) {
-//                 throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+//                 throw error; 
 //             } else {
-//                 res.render("edit", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
-//                     productos: results,
-//                     login: true,
-//                     rol: req.session.rol,
+//                 res.render("edit", {  
+//                     producto: results[0],
 //                 });
 //             }
-//         });
-//     } else {
-//         res.render("admin", {
-//             msg: "Acceso restringuido, inicie sesión",
-//             login: false,
-//         });
-//     }
-// });
+//         }
+//     );
+// })
+
+
+router.get("/edit/:ref", (req, res) => {
+    if (req.session.loggedin) {
+        const ref = req.params.ref;
+        db.query(
+            "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
+                if (error) {
+                    throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+                } else {
+                    res.render("edit", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
+                        producto: results[0],
+                        login: true,
+                    });
+                }
+            }  
+        );
+    } else {
+        res.redirect("/");
+    }
+})
 
 
 
