@@ -6,10 +6,9 @@ const db = require("../database/db");
 const { body, validationResult } = require("express-validator");
 const crud = require ("../src/controllers")
 const jwt = require("jsonwebtoken");
-
 const verificarSesion = require("./middlewares/verifyToken");
 const verificarAdmin = require("./middlewares/verifyAdmin");
-
+const upload = require("./middlewares/multerConfig");
 
 
 //################################################# R U T A S 
@@ -76,6 +75,7 @@ router.get("/admin", verificarSesion, (req, res) => {
                 productos: results,
                 login: true,
                 rol: req.user.rol,
+                user: req.user,
             });
         }
     });
@@ -229,6 +229,7 @@ router.get("/api/usuarios-conversaciones", verificarAdmin, (req, res) => {
 
 router.post(
     "/register",
+    upload.single("profileImage"), // AQUI VA EL MISMO NOMBRE INGRESADO EN VISTA REGISTER
     [
         body("user")
             .exists()
@@ -259,6 +260,10 @@ router.post(
             const name = req.body.name;
             const rol = req.body.rol;
             const pass = req.body.pass;
+            // const email = req.body.email;
+            // const edad = req.body.edad;
+            const profileImage = req.file.filename;
+
             //Cifrar la contraseña
             const passwordHash = await bcrypt.hash(pass, 8);
             //Guardar el usuario en la base de datos
@@ -269,6 +274,7 @@ router.post(
                     nombre: name,
                     rol: rol,
                     pass: passwordHash,
+                    imagen: profileImage,
                 },
                 (error, results) => {
                     if (error) {
@@ -290,8 +296,8 @@ router.post(
     }
 );
 
-// ################################################ I N I C I O  -  S E S I O N 
 
+// ################################################ I N I C I O  -  S E S I O N 
 router.post("/auth", async (req, res) => {
     const user = req.body.user;
     const pass = req.body.pass;
@@ -325,7 +331,8 @@ router.post("/auth", async (req, res) => {
                         user: results[0].usuario,
                         name: results[0].nombre,
                         rol: results[0].rol,
-                    }
+                        imagen: results[0].imagen,
+                    };
                     // CREAMOS EL TOKEN CON SU FIRMA Y DURACION
                     const token = jwt.sign(payload, process.env.JWT_SECRET,{
                         expiresIn: "1d",
