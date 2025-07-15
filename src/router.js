@@ -5,30 +5,18 @@ const bcrypt = require("bcryptjs");
 const db = require("../database/db");
 const { body, validationResult } = require("express-validator");
 const crud = require ("../src/controllers")
+const jwt = require("jsonwebtoken");
+
+const verificarSesion = require("./middlewares/verifyToken");
+const verificarAdmin = require("./middlewares/verifyAdmin");
 
 
-// ######################################## F U N C I O N E S ########################################
-function verificarSesion(req, res, next) {
-    if (req.session.loggedin) {
-        return next();
-    }
-    res.redirect('/login');
-}
 
-function verificarAdmin(req, res, next) {
-    //operador de encadenamiento opcional ?. Si no existe no da error
-    if (req.session?.loggedin && req.session?.rol === 'admin') {
-        return next();
-    }
-    res.status(403).json({ error: 'Acceso denegado' });
-}
-
-
-//9.4 ######################################## R U T A S ########################################
+//################################################# R U T A S 
 router.get("/", (req, res) => {
-    if (req.session.loggedin) {
+    if (req.cookies.token) {
         res.render("index", {
-            user: req.session.name,
+            user: req.user?.name,
             login: true,
         });
     } else {
@@ -41,14 +29,9 @@ router.get("/", (req, res) => {
 
 
 
-// ######################################## RUTA A VISTA LOGIN
-// router.get("/login", (req, res) => {
-//     res.render("login");
-// });
-
-
+// ################################################# RUTA A VISTA LOGIN
 router.get("/login", (req, res) => {
-    if (req.session.loggedin) {
+    if (req.cookies.token) {
         res.render("login", {
             login: true,
         });
@@ -61,13 +44,9 @@ router.get("/login", (req, res) => {
 
 
 
-// ######################################## RUTA A VISTA REGISTRO
-// router.get("/registro", (req, res) => {
-//     res.render("register");
-// });
-
+// ################################################# RUTA A VISTA REGISTRO
 router.get("/registro", (req, res) => {
-    if (req.session.loggedin) {
+    if (req.cookies.token) {
         res.render("register", {
             login: true,
         });
@@ -80,48 +59,33 @@ router.get("/registro", (req, res) => {
 
 
 
-// ######################################## C I E R R E  -  S E S I O N ########################################
+// ################################################# C I E R R E  -  S E S I O N 
 router.get("/logout", (req, res) => {
-    req.session = null;
+    res.clearCookie("token");
     res.redirect("/");
 });
 
 
-// ######################################## RUTA A VISTA ADMIN
-// router.get("/admin", (req, res) => {
-//     res.render("admin");
-// });
-
+// ################################################ RUTA A VISTA ADMIN
 router.get("/admin", verificarSesion, (req, res) => {
-    if (req.session.loggedin) {
-        db.query("SELECT * FROM productos", (error, results) => { //CONSULTAMOS Y CAPTURAMOS DATOS
-            if (error) {
-                throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
-            } else {
-                res.render("admin", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
-                    productos: results,
-                    login: true,
-                    rol: req.session.rol,
-                });
-            }
-        });
-    } else {
-        res.render("admin", {
-            msg: "Acceso restringuido, inicie sesión",
-            login: false,
-        });
-    }
+    db.query("SELECT * FROM productos", (error, results) => { 
+        if (error) {
+            throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+        } else {
+            res.render("admin", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
+                productos: results,
+                login: true,
+                rol: req.user.rol,
+            });
+        }
+    });
 });
 
 
 
-// ######################################## RUTA A VISTA CREATE
-// router.get("/create", (req, res) => {
-//     res.render("create");
-// });
-
-router.get("/create", (req, res) => {
-    if (req.session.loggedin) {
+// ################################################# RUTA A VISTA CREATE
+router.get("/create", verificarAdmin, (req, res) => {
+    if (req.cookies.token) {
         res.render("create", {
             login: true,
         });
@@ -131,47 +95,27 @@ router.get("/create", (req, res) => {
 });
 
 
-// ######################################## RUTA A VISTA EDIT
-// router.get("/edit/:ref", (req, res) => {
-//     const ref = req.params.ref;
-//     db.query(
-//         "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
-//             if (error) {
-//                 throw error; 
-//             } else {
-//                 res.render("edit", {  
-//                     producto: results[0],
-//                 });
-//             }
-//         }
-//     );
-// })
-
-
-router.get("/edit/:ref", (req, res) => {
-    if (req.session.loggedin) {
-        const ref = req.params.ref;
-        db.query(
-            "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
-                if (error) {
-                    throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
-                } else {
-                    res.render("edit", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
-                        producto: results[0],
-                        login: true,
-                    });
-                }
-            }  
-        );
-    } else {
-        res.redirect("/");
-    }
+// ################################################# RUTA A VISTA EDIT
+router.get("/edit/:ref", verificarAdmin, (req, res) => {
+    const ref = req.params.ref;
+    db.query(
+        "SELECT * FROM productos WHERE ref = ?", [ref], (error, results) => { 
+            if (error) {
+                throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+            } else {
+                res.render("edit", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
+                    producto: results[0],
+                    login: true,
+                });
+            }
+        }  
+    );
 })
 
 
 
-// ######################################## RUTA A VISTA DELETE
-router.get("/delete/:ref", (req, res) => {
+// ################################################# RUTA A VISTA DELETE
+router.get("/delete/:ref", verificarAdmin, (req, res) => {
     const ref = req.params.ref;
     db.query(
         "DELETE FROM productos WHERE ref = ?", [ref], (error, results) => { 
@@ -186,26 +130,24 @@ router.get("/delete/:ref", (req, res) => {
 
 
 
-// ######################################## RUTA A VISTA SOPORTE
+// ################################################# RUTA A VISTA SOPORTE
 router.get("/soporte", verificarSesion, (req, res) => {
     res.render("soporte", {
         user: {
-            username: req.session.user || req.session.name,
-            role: req.session.rol
+            username: req.user.user,
+            role: req.user.rol
         }
     });
 });
 
 
 
-// ######################################## API MENSAJES
+// ################################################# API MENSAJES
 router.get("/api/mensajes", verificarAdmin, (req, res) => {
     const usuario = req.query.con; // Extrae el usuario desde la url (...?con=usuarioX)
-
     if (!usuario) { //si no hay usuario que devuelva el error
         return res.status(400).json({ error: "Falta el parámetro ?con=usuario" });
     }
-
     const sql = `
     SELECT de_usuario, para_usuario, mensaje, fecha
     FROM mensajes
@@ -213,13 +155,11 @@ router.get("/api/mensajes", verificarAdmin, (req, res) => {
       (de_usuario = ? OR para_usuario = ?)
     ORDER BY fecha ASC
     `;
-
     db.query(sql, [usuario, usuario], (err, results) => {
         if (err) {
             console.error("❌ Error al consultar mensajes:", err);
             return res.status(500).json({ error: "Error al obtener mensajes" });
         }
-
         // DEVUELVE LOS MENSAJES EN FORMATO JSON
         res.json(results);
     });
@@ -227,14 +167,9 @@ router.get("/api/mensajes", verificarAdmin, (req, res) => {
 
 
 
-// ######################################## API MENSAJES MIOS
-router.get("/api/mensajes/mios", (req, res) => {
-    const usuario = req.session.user;
-
-    if (!req.session?.loggedin || !usuario) { //VERIFICA QUE EL USUARIO ESTE LOGUEADO Y TENGA UN USUARIO
-        return res.status(403).json({ error: "No autorizado" });
-    }
-
+// ################################################# API MENSAJES MIOS
+router.get("/api/mensajes/mios", verificarSesion, (req, res) => {
+    const usuario = req.user.user;
     const sql = `
     SELECT de_usuario, para_usuario, mensaje, fecha
     FROM mensajes
@@ -242,13 +177,11 @@ router.get("/api/mensajes/mios", (req, res) => {
       (de_usuario = ? OR para_usuario = ?)
     ORDER BY fecha ASC
     `;
-
     db.query(sql, [usuario, usuario], (err, results) => {
         if (err) {
             console.error("❌ Error al obtener mensajes:", err);
             return res.status(500).json({ error: "Error interno" });
         }
-
         // DEVUELVE LOS MENSAJES EN FORMATO JSON
         res.json(results);
     });
@@ -256,9 +189,8 @@ router.get("/api/mensajes/mios", (req, res) => {
 
 
 
-// ######################################## API USUARIOS
+// ############################################## API USUARIOS
 router.get("/api/usuarios-conversaciones", verificarAdmin, (req, res) => {
-
     /*Busca mensajes donde participen administradores.
     usa UNION para combinar las dos consultas y elimina duplicados
     renombra las dos columnas como "usuario" para poder procesarlas
@@ -279,13 +211,11 @@ router.get("/api/usuarios-conversaciones", verificarAdmin, (req, res) => {
     ) AS conversaciones
     WHERE usuario NOT IN (SELECT usuario FROM usuarios WHERE rol = 'admin')
   `;
-
     db.query(sql, (err, results) => {
         if (err) {
             console.error("❌ Error al obtener lista de usuarios:", err);
             return res.status(500).json({ error: "Error interno" });
         }
-
         const usuarios = results.map(r => r.usuario); // EXTRAE LOS NOMBRES DE LOS USUARIOS
         res.json(usuarios); //LOS DEVUELVE EN FORMATO JSON
     });
@@ -293,12 +223,9 @@ router.get("/api/usuarios-conversaciones", verificarAdmin, (req, res) => {
 
 
 
-
-
-
-// #######################################################################################################
-// ######################################## R U T A S - P O S T S ########################################
-// #######################################################################################################
+// ###################################################################################
+// ############################## R U T A S - P O S T S ##############################
+// ###################################################################################
 
 router.post(
     "/register",
@@ -363,7 +290,8 @@ router.post(
     }
 );
 
-// ######################################## I N I C I O  -  S E S I O N ########################################
+// ################################################ I N I C I O  -  S E S I O N 
+
 router.post("/auth", async (req, res) => {
     const user = req.body.user;
     const pass = req.body.pass;
@@ -392,11 +320,21 @@ router.post("/auth", async (req, res) => {
                         login: false,
                     });
                 } else {
-                    //variables de sesión
-                    req.session.loggedin = true;
-                    req.session.name = results[0].nombre;
-                    req.session.user = results[0].usuario;
-                    req.session.rol = results[0].rol;
+                    //AHORA USAMOS LA NUEVA FORMA DE AUTENTICACION
+                    const payload = {
+                        user: results[0].usuario,
+                        name: results[0].nombre,
+                        rol: results[0].rol,
+                    }
+                    // CREAMOS EL TOKEN CON SU FIRMA Y DURACION
+                    const token = jwt.sign(payload, process.env.JWT_SECRET,{
+                        expiresIn: "1d",
+                    });
+                    res.cookie("token", token, {
+                        maxAge: 86400000,
+                        httpOnly: true,
+                        secure: false,
+                    });
                     //Mensaje simple para avisar de que es correcta la autenticación
                     res.render("login", {
                         alert: true,
