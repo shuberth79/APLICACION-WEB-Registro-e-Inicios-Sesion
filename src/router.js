@@ -10,6 +10,10 @@ const verificarSesion = require("./middlewares/verifyToken");
 const verificarAdmin = require("./middlewares/verifyAdmin");
 const upload = require("./middlewares/multerConfig");
 const limiter = require("./middlewares/authLimiter");
+const puppeteer = require("puppeteer");
+const ejs = require("ejs");
+const path = require("path");
+const PDFDocument = require("pdfkit");
 
 
 //################################################# R U T A S 
@@ -81,6 +85,24 @@ router.get("/admin", verificarSesion, (req, res) => {
         }
     });
 });
+
+
+// ################################################ RUTA A VISTA PDFADMIN
+router.get("/pdfAdmin", verificarSesion, (req, res) => {
+    db.query("SELECT * FROM productos", (error, results) => { 
+        if (error) {
+            throw error; // EN CASO DE HABER ERRORES MOSTRARNOS
+        } else {
+            res.render("pdfTabla", {  // EN CASO DE NO HABER ERRORES LLEVARNOS A VISTA ADMIN
+                productos: results,
+                login: true,
+                rol: req.user.rol,
+                user: req.user,
+            });
+        }
+    });
+});
+
 
 
 
@@ -219,6 +241,86 @@ router.get("/api/usuarios-conversaciones", verificarAdmin, (req, res) => {
         }
         const usuarios = results.map(r => r.usuario); // EXTRAE LOS NOMBRES DE LOS USUARIOS
         res.json(usuarios); //LOS DEVUELVE EN FORMATO JSON
+    });
+});
+
+
+// ############################################## PDF
+router.get("/pdfProductos", verificarSesion, async (req, res) => {
+    db.query("SELECT * FROM productos", async (error, results) => {
+        if (error) {
+            throw error;
+        }
+
+        try {
+            const html = await ejs.renderFile(path.join(__dirname, "../views/pdfTabla.ejs"), {productos: results}); //genera el html
+
+            const browser = await puppeteer.launch({
+                headless: true,
+                args: ["--no-sandbox", "--disable-setuid-sandbox"], 
+            }); // ejecuta un navegador virtual para generar el PDF
+
+            const page = await browser.newPage(); //crea una nueva página
+            await page.setContent(html, { waitUntil: "networkidle0" }); //carga el html
+
+            const pdfBuffer = await page.pdf({
+                format: "A4",
+                printBackground: true,
+                margin: { top: "1cm", right: "1cm", bottom: "1cm", left: "1cm" },
+            }); //genera el PDF a partir de la página y lo guarda en memoria
+
+            await browser.close(); //cierra el navegador
+
+            res.setHeader("Content-Type", "application/pdf");//establece el tipo de contenido
+            res.setHeader("Content-Disposition", 'attachment; filename="productos.pdf"'); //establece el nombre del archivo
+            res.send(pdfBuffer); //envia el PDF
+
+        } catch (err) {
+            console.error("❌ Error al generar el PDF:", err);
+            res.status(500).send("Error interno al generar el PDF");
+        }
+    });
+});
+
+
+// ############################################## PDF 2
+router.get("/pdfProductoskit", verificarSesion, (req, res) => {
+    db.query("SELECT * FROM productos", (error, results) => { //obtenemos los productos
+        if (error) {
+            throw error;
+        }
+        const doc = new PDFDocument({ margin: 40, size: 'A4' }); //creamos el PDF
+
+        // Encabezados HTTP para descarga
+        res.setHeader("Content-Disposition", 'attachment; filename="productosKit.pdf"'); //establece el nombre del archivo
+        res.setHeader("Content-Type", "application/pdf"); //establece el tipo de contenido
+
+        doc.pipe(res); // Envía el PDF al cliente
+
+        // Título
+        doc.fontSize(18).text("Listado de Productos", { align: "center" }).moveDown(); //escribe un título centrado y grande
+        //moveDown() mueve el cursor hacia abajo
+
+        // Encabezados de tabla
+        doc.font("Helvetica-Bold").fontSize(15); // Establece la fuente y el tamaño
+        let y = doc.y; // Obtiene la posición vertical actual
+        doc.text("Referencia", 50, y); //escribe el encabezado en x, y
+        doc.text("Nombre", 150, y);
+        doc.text("Precio", 300, y);
+        doc.text("Stock", 400, y);
+
+        // Espacio entre encabezado y datos
+        y = y + 20;
+
+        doc.font("Helvetica").fontSize(12);// Establece la fuente y el tamaño
+        results.forEach(producto => { //recorremos los productos
+            doc.text(producto.ref, 50, y);
+            doc.text(producto.nombre, 150, y);
+            doc.text(producto.precio, 300, y);
+            doc.text(producto.stock, 380, y);
+            y = y + 20; // espacio entre filas
+        });
+        doc.end(); // Finaliza el documento
     });
 });
 
