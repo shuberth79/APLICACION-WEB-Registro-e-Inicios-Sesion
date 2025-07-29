@@ -10,17 +10,20 @@ const io = socketIO(server);
 const db = require("./database/db");
 const jwt = require("jsonwebtoken")
 const setupSocket = require("./src/sockets/socketHandler");
+const security = require("./src/middlewares/security");
+
 
 
 //9.3 ################################# M I D D L E W A R E S  (FIJO) #####################################
+app.use("/resources", express.static(__dirname + "/public"));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true })); //LEER LOS DATOS DE FORMULARIOS: 2D False / 3D True
 app.use(express.json()); //LEER LOS DATOS DESDE API
+app.use(security);
 app.use("/", require("./src/router"));
 
-
 //9.5 ############################## C A R P E T A   P U B L I C A  (FIJO) ################################
-app.use("/resources", express.static(__dirname + "/public"));
+
 
 
 //9.6 ######################################## V I S T A S  (FIJO) ########################################

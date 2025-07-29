@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const verificarSesion = require("./middlewares/verifyToken");
 const verificarAdmin = require("./middlewares/verifyAdmin");
 const upload = require("./middlewares/multerConfig");
+const limiter = require("./middlewares/authLimiter");
 
 
 //################################################# R U T A S 
@@ -228,7 +229,7 @@ router.get("/api/usuarios-conversaciones", verificarAdmin, (req, res) => {
 // ###################################################################################
 
 router.post(
-    "/register",
+    "/register", limiter,
     upload.single("profileImage"), // AQUI VA EL MISMO NOMBRE INGRESADO EN VISTA REGISTER
     [
         body("user")
@@ -298,7 +299,7 @@ router.post(
 
 
 // ################################################ I N I C I O  -  S E S I O N 
-router.post("/auth", async (req, res) => {
+router.post("/auth", limiter, async (req, res) => {
     const user = req.body.user;
     const pass = req.body.pass;
 
@@ -315,7 +316,7 @@ router.post("/auth", async (req, res) => {
                     !(await bcrypt.compare(pass, results[0].pass))
                 ) {
                     // AVISAMOS QUE LAS CREDENCIALES NO COINCIDEN
-                    res.send("login", {
+                    return res.render("login", {
                         alert: true,
                         alertTitle: "Error",
                         alertMessage: "Usuario y/o contraseña erróneo",
