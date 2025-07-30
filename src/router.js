@@ -326,6 +326,20 @@ router.get("/pdfProductoskit", verificarSesion, (req, res) => {
 
 
 
+// ############################################## LENGUAJES
+router.get('/set-lang/:lang', (req, res) => {
+    const lang = req.params.lang; //capturamos el parámetro de la ruta
+    const returnTo = req.query.returnTo || '/'; //capturamos el parámetro de la redirección sino nos manda a la raiz
+
+    if (['es', 'en'].includes(lang)) { //verifica que el idioma sea válido
+        res.cookie('lang', lang, { maxAge: 900000, httpOnly: true }); //guarda el idioma en la cookie
+    }
+
+    res.redirect(returnTo); //redirecciona a la ruta indicada
+});
+
+
+
 // ###################################################################################
 // ############################## R U T A S - P O S T S ##############################
 // ###################################################################################

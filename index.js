@@ -11,6 +11,21 @@ const db = require("./database/db");
 const jwt = require("jsonwebtoken")
 const setupSocket = require("./src/sockets/socketHandler");
 const security = require("./src/middlewares/security");
+const i18n = require('i18n');
+const path = require('path');
+const setGlobals = require('./src/middlewares/setGlobals');
+
+
+//################################# Configurar lógica internacionalización
+i18n.configure({
+    locales: ['en', 'es'], // Idiomas disponibles
+    directory: path.join(__dirname, 'locales'), // Carpeta donde se guardan los archivos de traducción
+    defaultLocale: 'es',
+    cookie: 'lang', // Puedes leer el idioma desde una cookie
+    queryParameter: 'lang', // O desde la URL ?lang=en
+    autoReload: true,
+    syncFiles: true
+});
 
 
 
@@ -20,6 +35,8 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true })); //LEER LOS DATOS DE FORMULARIOS: 2D False / 3D True
 app.use(express.json()); //LEER LOS DATOS DESDE API
 app.use(security);
+app.use(i18n.init); 
+app.use(setGlobals); //Siempre va penultimo en el codigo
 app.use("/", require("./src/router"));
 
 //9.5 ############################## C A R P E T A   P U B L I C A  (FIJO) ################################
